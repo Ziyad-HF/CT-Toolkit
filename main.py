@@ -4,7 +4,7 @@ import numpy as np
 import pydicom
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QVBoxLayout, QHBoxLayout, QWidget, 
                              QSlider, QComboBox, QLabel, QPushButton, QFileDialog, QMessageBox,
-                             QGroupBox, QSpinBox, QRadioButton, QFormLayout, QMenu)
+                             QGroupBox, QSpinBox, QRadioButton, QFormLayout, QMenu, QSpacerItem, QSizePolicy)
 from PyQt5.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -37,10 +37,10 @@ class MainWindow(QMainWindow):
         self.metadata = {}
         self.filters = ["Ramp", "Hann", "Hamming", "None"]
         self.window_presets = {
-            "Brain": (80, 40),
-            "Abdomen": (400, 40),
-            "Bone": (1500, 300),
-            "Spine": (1000, 250)
+            "Brain": (80, 40), 
+            "Liver": (150, 30),
+            "Bone": (1800, 400),
+            "soft tissue": (400, 40),
         }
         self.averaging_filters = ["Mean", "Gaussian", "Median"]
         self.progress_dialog = None
@@ -77,8 +77,9 @@ class MainWindow(QMainWindow):
         # Enable context menu for canvas
         self.canvas.setContextMenuPolicy(Qt.CustomContextMenu)
         self.canvas.customContextMenuRequested.connect(self.show_context_menu)
-    
+
         # Folder selection group
+        control_layout.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         folder_group = QGroupBox("DICOM Folder")
         folder_layout = QVBoxLayout(folder_group)
         self.folder_button = QPushButton("Select DICOM Folder")
@@ -88,6 +89,7 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(folder_group)
         
         # Metadata display
+        control_layout.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         metadata_group = QGroupBox("Metadata")
         metadata_layout = QVBoxLayout(metadata_group)
         self.metadata_label = QLabel("No dataset loaded")
@@ -96,6 +98,7 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(metadata_group)
         
         # Filter selection group
+        control_layout.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         filter_group = QGroupBox("Reconstruction Filter")
         filter_layout = QFormLayout(filter_group)
         self.filter_combo = QComboBox()
@@ -115,6 +118,7 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(filter_group)
         
         # Slice control group
+        control_layout.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         slice_group = QGroupBox("Slice Control")
         slice_layout = QFormLayout(slice_group)
         self.slice_slider = QSlider(Qt.Horizontal)
@@ -130,7 +134,7 @@ class MainWindow(QMainWindow):
         slice_layout.addRow(QLabel(""), self.slice_idx_label)
         
         self.thickness_spinbox = QSpinBox()
-        self.thickness_spinbox.setRange(1, 20)
+        self.thickness_spinbox.setRange(1, 30)
         self.thickness_spinbox.setValue(int(self.original_thickness))
         self.thickness_spinbox.setToolTip("Set slice thickness in mm")
         self.thickness_spinbox.valueChanged.connect(self.update_image)
@@ -143,23 +147,38 @@ class MainWindow(QMainWindow):
         self.avg_filter_combo.setEnabled(False)
         slice_layout.addRow(QLabel("Averaging Filter:"), self.avg_filter_combo)
         control_layout.addWidget(slice_group)
-        
+
         # Windowing group
+        control_layout.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         window_group = QGroupBox("Windowing")
         window_layout = QFormLayout(window_group)
         self.wl_slider = QSlider(Qt.Horizontal)
-        self.wl_slider.setRange(-1000, 1000)
+        self.wl_slider.setRange(-1000, 3000)
         self.wl_slider.setValue(40)
         self.wl_slider.setToolTip("Window level in HU (controls brightness)")
         self.wl_slider.valueChanged.connect(self.update_image)
         window_layout.addRow(QLabel("Window Level (HU):"), self.wl_slider)
         
+        self.wl_spinbox = QSpinBox()
+        self.wl_spinbox.setRange(-1000, 3000)
+        self.wl_spinbox.setValue(40)
+        self.wl_spinbox.setToolTip("Precise window level in HU (controls brightness)")
+        self.wl_spinbox.valueChanged.connect(self.update_image)
+        window_layout.addRow(QLabel(""), self.wl_spinbox)
+
         self.ww_slider = QSlider(Qt.Horizontal)
-        self.ww_slider.setRange(1, 3000)
+        self.ww_slider.setRange(1, 2000)
         self.ww_slider.setValue(400)
         self.ww_slider.setToolTip("Window width in HU (controls contrast)")
         self.ww_slider.valueChanged.connect(self.update_image)
         window_layout.addRow(QLabel("Window Width (HU):"), self.ww_slider)
+
+        self.ww_spinbox = QSpinBox()
+        self.ww_spinbox.setRange(1, 2000)
+        self.ww_spinbox.setValue(400)
+        self.ww_spinbox.setToolTip("Precise window width in HU (controls contrast)")
+        self.ww_spinbox.valueChanged.connect(self.update_image)
+        window_layout.addRow(QLabel(""), self.ww_spinbox)
         
         self.preset_combo = QComboBox()
         self.preset_combo.addItems(["Manual"] + list(self.window_presets.keys()))
@@ -169,11 +188,12 @@ class MainWindow(QMainWindow):
         control_layout.addWidget(window_group)
         
         # Reset button
+        control_layout.addItem(QSpacerItem(0, 20, QSizePolicy.Minimum, QSizePolicy.Expanding))
         reset_button = QPushButton("Reset")
         reset_button.setToolTip("Reset all parameters to default")
         reset_button.clicked.connect(self.reset_parameters)
         control_layout.addWidget(reset_button)
-        
+
         control_layout.addStretch()
 
     def select_folder(self):
@@ -400,7 +420,9 @@ class MainWindow(QMainWindow):
         if preset != "Manual":
             ww, wl = self.window_presets[preset]
             self.ww_slider.setValue(ww)
+            self.ww_spinbox.setValue(ww)
             self.wl_slider.setValue(wl)
+            self.wl_spinbox.setValue(wl)
         self.update_image()
 
     def process_image(self, img, slice_idx):
@@ -439,8 +461,29 @@ class MainWindow(QMainWindow):
         self.preset_combo.setCurrentText("Manual")
         self.update_image()
 
+    def sync_slider_spinbox(self, ww_value, wl_value):
+        self.ww_slider.blockSignals(True)
+        self.ww_spinbox.blockSignals(True)
+
+        self.ww_slider.setValue(ww_value)
+        self.ww_spinbox.setValue(ww_value)
+
+        self.ww_slider.blockSignals(False)
+        self.ww_spinbox.blockSignals(False)
+
+        self.wl_slider.blockSignals(True)
+        self.wl_spinbox.blockSignals(True)
+
+        self.wl_slider.setValue(wl_value)
+        self.wl_spinbox.setValue(wl_value)
+
+        self.wl_slider.blockSignals(False)
+        self.wl_spinbox.blockSignals(False)
+
+
     def update_image(self):
         """Update the displayed image based on current parameters."""
+        self.sync_slider_spinbox(self.ww_slider.value(), self.wl_slider.value())
         if self.current_stack is None or self.progress_dialog:
             return
         self.current_slice_idx = self.slice_slider.value()
@@ -497,7 +540,6 @@ class MainWindow(QMainWindow):
         plt.close(fig)
         QMessageBox.information(self, "Success", f"Slices exported to {save_path}")
 
-
 def laod_style_sheet(file_path):
     """Load and apply the stylesheet for the application."""
     with open(file_path, "r") as f:
@@ -506,6 +548,9 @@ def laod_style_sheet(file_path):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    font = app.font()
+    font.setPointSize(12)
+    app.setFont(font)
     app.setStyleSheet(laod_style_sheet("style.qss"))  
     
     window = MainWindow()
