@@ -551,7 +551,7 @@ if __name__ == '__main__':
     font = app.font()
     font.setPointSize(12)
     app.setFont(font)
-    app.setStyleSheet(laod_style_sheet("style.qss"))  
+    app.setStyleSheet(laod_style_sheet("media/style.qss"))  
     
     window = MainWindow()
     window.show()
