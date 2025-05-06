@@ -102,3 +102,5 @@ The **CT Reconstruction Tool** is a desktop application built with PyQt5 and Mat
   - `NumPy` and `SciPy`: For image processing and reconstruction.
   - `Matplotlib`: For rendering the CT slices and navigation toolbar.
 
+
+### For more details about the methodology and results check the report [here](media/Report.pdf) and the presentation [here](media/Presentation.pptx).

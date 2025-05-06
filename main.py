@@ -19,7 +19,6 @@ from skimage.util import img_as_float
 from scipy.signal import convolve2d
 from PyQt5.QtGui import QCursor
 import matplotlib.pyplot as plt
-import imageio
 
 class MainWindow(QMainWindow):
     def __init__(self):
